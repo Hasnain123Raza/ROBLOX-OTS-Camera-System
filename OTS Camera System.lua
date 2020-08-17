@@ -27,6 +27,7 @@ function CLASS.new()
 	local steppedInEvent = Instance.new("BindableEvent")
 	local shoulderDirectionChangedEvent = Instance.new("BindableEvent")
 	local activeCameraSettingsChangedEvent = Instance.new("BindableEvent")
+	local cameraFollowChangedEvent = Instance.new("BindableEvent")
 	
 	local dataTable = setmetatable(
 		{
@@ -39,6 +40,8 @@ function CLASS.new()
 			ActiveCameraSettings = nil,
 			ShoulderDirection = 1,
 			IsSteppedOut = true,
+			CameraFollow = false,
+			VerticalAngleLimits = NumberRange.new(-45, 45),
 			----
 			
 			--// Events //--
@@ -54,6 +57,8 @@ function CLASS.new()
 			ShoulderDirectionChanged = shoulderDirectionChangedEvent.Event,
 			ActiveCameraSettingsChangedEvent = activeCameraSettingsChangedEvent,
 			ActiveCameraSettingsChanged = activeCameraSettingsChangedEvent.Event,
+			CameraFollowChangedEvent = cameraFollowChangedEvent,
+			CameraFollowChanged = cameraFollowChangedEvent.Event,
 			----
 			
 			--// Camera Settings //--
@@ -102,6 +107,14 @@ local function Lerp(x, y, a)
 end
 
 --// METHODS //--
+
+function CLASS:SetCameraFollow(status)
+	assert(status ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
+	assert(typeof(status) == "boolean", "OTS Camera System Argument Error: boolean expected, got " .. typeof(status))
+	
+	self.CameraFollow = status
+	self.CameraFollowChangedEvent:Fire(status)
+end
 
 function CLASS:SetActiveCameraSettings(cameraSettings)
 	assert(cameraSettings ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
@@ -170,6 +183,7 @@ end
 
 function CLASS:InitializeForDisable()
 	self:LoadCameraSettings()
+	self:SetCameraFollow(false)
 	if (self.IsSteppedOut == false) then
 		self:StepOut()
 	end
@@ -183,6 +197,7 @@ function CLASS:Update()
 	local mouseDelta = USER_INPUT_SERVICE:GetMouseDelta() * activeCameraSettings.Sensitivity
 	self.HorizontalAngle = self.HorizontalAngle - mouseDelta.X
 	self.VerticalAngle = self.VerticalAngle - mouseDelta.Y
+	self.VerticalAngle = math.rad(math.clamp(math.deg(self.VerticalAngle), self.VerticalAngleLimits.Min, self.VerticalAngleLimits.Max))
 	
 	local character = LOCAL_PLAYER.Character
 	local humanoidRootPart = (character ~= nil) and (character:FindFirstChild("HumanoidRootPart"))
@@ -223,6 +238,13 @@ function CLASS:Update()
 			local obstructionPosition = humanoidRootPart.Position + (obstructionDisplacement.Unit * (obstructionDisplacement.Magnitude - 0.1))
 			local x,y,z,r00,r01,r02,r10,r11,r12,r20,r21,r22 = newCameraCFrame:components()
 			newCameraCFrame = CFrame.new(obstructionPosition.x, obstructionPosition.y, obstructionPosition.z, r00, r01, r02, r10, r11, r12, r20, r21, r22)
+		end
+		----
+		
+		-- Address camera follow --
+		if (self.CameraFollow == true) then
+			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position) *
+				CFrame.Angles(0, self.HorizontalAngle, 0)
 		end
 		----
 		
