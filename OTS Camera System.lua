@@ -31,6 +31,11 @@ function CLASS.new()
 	
 	local dataTable = setmetatable(
 		{
+			
+			--// Configurations //--
+			VerticalAngleLimits = NumberRange.new(-45, 45),
+			----
+			
 			--// Properties //--
 			IsEnabled = false,
 			SavedCameraSettings = nil,
@@ -41,7 +46,6 @@ function CLASS.new()
 			ShoulderDirection = 1,
 			IsSteppedOut = true,
 			CameraFollow = false,
-			VerticalAngleLimits = NumberRange.new(-45, 45),
 			----
 			
 			--// Events //--
@@ -243,8 +247,9 @@ function CLASS:Update()
 		
 		-- Address camera follow --
 		if (self.CameraFollow == true) then
-			humanoidRootPart.CFrame = CFrame.new(humanoidRootPart.Position) *
+			local newHumanoidRootPartCFrame = CFrame.new(humanoidRootPart.Position) *
 				CFrame.Angles(0, self.HorizontalAngle, 0)
+			humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(newHumanoidRootPartCFrame, activeCameraSettings.LerpingSpeed/2)
 		end
 		----
 		
