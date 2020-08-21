@@ -179,7 +179,10 @@ function CLASS:InitializeForEnable()
 	
 	workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
 	self:SetActiveCameraSettings("DefaultShoulder")
-	self:StepIn()
+	if (self.IsSteppedOut == true) then
+		self:StepIn()
+	end
+	self:SetCameraFollow(true)
 	
 	self.HorizontalAngle = 0
 	self.VerticalAngle = 0
@@ -274,7 +277,6 @@ function CLASS:Enable()
 				self:Update()
 			else
 				RUN_SERVICE:UnbindFromRenderStep(UPDATE_UNIQUE_KEY)
-				self:InitializeForDisable()
 			end
 		end
 	)
@@ -283,6 +285,7 @@ end
 function CLASS:Disable()
 	assert(self.IsEnabled == true, "OTS Camera System Logic Error: Attempt to disable without enabling")
 	
+	self:InitializeForDisable()
 	self.IsEnabled = false
 	self.DisabledEvent:Fire()
 end
@@ -325,4 +328,4 @@ USER_INPUT_SERVICE.InputEnded:Connect(function(inputObject, gameProcessedEvent)
 end)
 
 
-return singleton
+return singleton``````````````
