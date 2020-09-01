@@ -21,48 +21,50 @@ local UPDATE_UNIQUE_KEY = "OTS_CAMERA_SYSTEM_UPDATE"
 
 function CLASS.new()
 	
+	--// Events //--
+	local activeCameraSettingsChangedEvent = Instance.new("BindableEvent")
+	local characterAlignmentChangedEvent = Instance.new("BindableEvent")
+	local mouseStepChangedEvent = Instance.new("BindableEvent")
+	local shoulderDirectionChangedEvent = Instance.new("BindableEvent")
 	local enabledEvent = Instance.new("BindableEvent")
 	local disabledEvent = Instance.new("BindableEvent")
-	local steppedOutEvent = Instance.new("BindableEvent")
-	local steppedInEvent = Instance.new("BindableEvent")
-	local shoulderDirectionChangedEvent = Instance.new("BindableEvent")
-	local activeCameraSettingsChangedEvent = Instance.new("BindableEvent")
-	local cameraFollowChangedEvent = Instance.new("BindableEvent")
+	----
 	
 	local dataTable = setmetatable(
 		{
 			
-			--// Configurations //--
-			VerticalAngleLimits = NumberRange.new(-45, 45),
-			----
-			
 			--// Properties //--
-			IsEnabled = false,
 			SavedCameraSettings = nil,
 			SavedMouseBehavior = nil,
+			ActiveCameraSettings = nil,
 			HorizontalAngle = 0,
 			VerticalAngle = 0,
-			ActiveCameraSettings = nil,
 			ShoulderDirection = 1,
-			IsSteppedOut = true,
-			CameraFollow = false,
+			----
+			
+			--// Flags //--
+			IsCharacterAligned = false,
+			IsMouseSteppedIn = false,
+			IsEnabled = false,
 			----
 			
 			--// Events //--
+			ActiveCameraSettingsChangedEvent = activeCameraSettingsChangedEvent,
+			ActiveCameraSettingsChanged = activeCameraSettingsChangedEvent.Event,
+			CharacterAlignmentChangedEvent = characterAlignmentChangedEvent,
+			CharacterAlignmentChanged = characterAlignmentChangedEvent.Event,
+			MouseStepChangedEvent = mouseStepChangedEvent,
+			MouseStepChanged = mouseStepChangedEvent.Event,
+			ShoulderDirectionChangedEvent = shoulderDirectionChangedEvent,
+			ShoulderDirectionChanged = shoulderDirectionChangedEvent.Event,
 			EnabledEvent = enabledEvent,
 			Enabled = enabledEvent.Event,
 			DisabledEvent = disabledEvent,
 			Disabled = disabledEvent.Event,
-			SteppedOutEvent = steppedOutEvent,
-			SteppedOut = steppedOutEvent.Event,
-			SteppedInEvent = steppedInEvent,
-			SteppedIn = steppedInEvent.Event,
-			ShoulderDirectionChangedEvent = shoulderDirectionChangedEvent,
-			ShoulderDirectionChanged = shoulderDirectionChangedEvent.Event,
-			ActiveCameraSettingsChangedEvent = activeCameraSettingsChangedEvent,
-			ActiveCameraSettingsChanged = activeCameraSettingsChangedEvent.Event,
-			CameraFollowChangedEvent = cameraFollowChangedEvent,
-			CameraFollowChanged = cameraFollowChangedEvent.Event,
+			----
+			
+			--// Configurations //--
+			VerticalAngleLimits = NumberRange.new(-45, 45),
 			----
 			
 			--// Camera Settings //--
@@ -70,20 +72,21 @@ function CLASS.new()
 				
 				DefaultShoulder = {
 					FieldOfView = 70,
-					Offset = Vector3.new(2.5, 2.5, 5),
-					Sensitivity = 1/300,
-					LerpingSpeed = 0.5
+					Offset = Vector3.new(2.5, 2.5, 8),
+					Sensitivity = 3,
+					LerpSpeed = 0.5
 				},
 				
 				ZoomedShoulder = {
 					FieldOfView = 40,
-					Offset = Vector3.new(1.5, 1.5, 4),
-					Sensitivity = 1/600,
-					LerpingSpeed = 0.5
+					Offset = Vector3.new(1.5, 1.5, 6),
+					Sensitivity = 1.5,
+					LerpSpeed = 0.5
 				}
 				
 			}
 			----
+			
 		},
 		CLASS
 	)
@@ -112,51 +115,64 @@ end
 
 --// METHODS //--
 
-function CLASS:SetCameraFollow(status)
-	assert(status ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
-	assert(typeof(status) == "boolean", "OTS Camera System Argument Error: boolean expected, got " .. typeof(status))
-	
-	self.CameraFollow = status
-	self.CameraFollowChangedEvent:Fire(status)
-end
-
+--// //--
 function CLASS:SetActiveCameraSettings(cameraSettings)
 	assert(cameraSettings ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
 	assert(typeof(cameraSettings) == "string", "OTS Camera System Argument Error: string expected, got " .. typeof(cameraSettings))
 	assert(self.CameraSettings[cameraSettings] ~= nil, "OTS Camera System Argument Error: Attempt to set unrecognized camera settings " .. cameraSettings)
-	
+	if (self.IsEnabled == false) then
+		warn("OTS Camera System Logic Warning: Attempt to change active camera settings without enabling OTS camera system")
+		return
+	end
+
 	self.ActiveCameraSettings = cameraSettings
 	self.ActiveCameraSettingsChangedEvent:Fire(cameraSettings)
+end
+
+function CLASS:SetCharacterAlignment(aligned)
+	assert(aligned ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
+	assert(typeof(aligned) == "boolean", "OTS Camera System Argument Error: boolean expected, got " .. typeof(aligned))
+	if (self.IsEnabled == false) then
+		warn("OTS Camera System Logic Warning: Attempt to change character alignment without enabling OTS camera system")
+		return
+	end
+	
+	self.IsCharacterAligned = aligned
+	self.CharacterAlignmentChangedEvent:Fire(aligned)
+end
+
+function CLASS:SetMouseStep(steppedIn)
+	assert(steppedIn ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
+	assert(typeof(steppedIn) == "boolean", "OTS Camera System Argument Error: boolean expected, got " .. typeof(steppedIn))
+	if (self.IsEnabled == false) then
+		warn("OTS Camera System Logic Warning: Attempt to change mouse step without enabling OTS camera system")
+		return
+	end
+	
+	self.IsMouseSteppedIn = steppedIn
+	self.MouseStepChangedEvent:Fire(steppedIn)
+	if (steppedIn == true) then
+		USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.LockCenter
+	else
+		USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.Default
+	end
 end
 
 function CLASS:SetShoulderDirection(shoulderDirection)
 	assert(shoulderDirection ~= nil, "OTS Camera System Argument Error: Argument 1 nil or missing")
 	assert(typeof(shoulderDirection) == "number", "OTS Camera System Argument Error: number expected, got " .. typeof(shoulderDirection))
 	assert(math.abs(shoulderDirection) == 1, "OTS Camera System Argument Error: Attempt to set unrecognized shoulder direction " .. shoulderDirection)
+	if (self.IsEnabled == false) then
+		warn("OTS Camera System Logic Warning: Attempt to change shoulder direction without enabling OTS camera system")
+		return
+	end
 	
 	self.ShoulderDirection = shoulderDirection
 	self.ShoulderDirectionChangedEvent:Fire(shoulderDirection)
 end
+----
 
-function CLASS:StepOut()
-	assert(self.IsEnabled == true, "OTS Camera System Logic Error: Attempt to step out without enabling")
-	assert(self.IsSteppedOut == false, "OTS Camera System Logic Error: Attempt to step out without stepping in")
-	
-	self.IsSteppedOut = true
-	self.SteppedOutEvent:Fire()
-	USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.Default
-end
-
-function CLASS:StepIn()
-	assert(self.IsEnabled == true, "OTS Camera System Logic Error: Attempt to step in without enabling")
-	assert(self.IsSteppedOut == true, "OTS Camera System Logic Error: Attempt to step in without stepping out")
-	
-	self.IsSteppedOut = false
-	self.SteppedInEvent:Fire()
-	
-	USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.LockCenter
-end
-
+--// //--
 function CLASS:SaveCameraSettings()
 	local currentCamera = workspace.CurrentCamera
 	self.SavedCameraSettings = {
@@ -172,74 +188,67 @@ function CLASS:LoadCameraSettings()
 		currentCamera[setting] = value
 	end
 end
+----
 
-function CLASS:InitializeForEnable()
-	self:SaveCameraSettings()
-	self.SavedMouseBehavior = USER_INPUT_SERVICE.MouseBehavior
-	
-	workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
-	self:SetActiveCameraSettings("DefaultShoulder")
-	if (self.IsSteppedOut == true) then
-		self:StepIn()
-	end
-	self:SetCameraFollow(true)
-	
-	self.HorizontalAngle = 0
-	self.VerticalAngle = 0
-end
-
-function CLASS:InitializeForDisable()
-	self:LoadCameraSettings()
-	self:SetCameraFollow(false)
-	if (self.IsSteppedOut == false) then
-		self:StepOut()
-	end
-	USER_INPUT_SERVICE.MouseBehavior = self.SavedMouseBehavior
-end
-
+--// //--
 function CLASS:Update()
 	local currentCamera = workspace.CurrentCamera
 	local activeCameraSettings = self.CameraSettings[self.ActiveCameraSettings]
 	
+	--// Address mouse behavior and camera type //--
+	if (self.IsMouseSteppedIn == true) then
+		USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.LockCenter
+	else
+		USER_INPUT_SERVICE.MouseBehavior = Enum.MouseBehavior.Default
+	end
+	currentCamera.CameraType = Enum.CameraType.Scriptable
+	---
+	
+	--// Address mouse input //--
 	local mouseDelta = USER_INPUT_SERVICE:GetMouseDelta() * activeCameraSettings.Sensitivity
-	self.HorizontalAngle = self.HorizontalAngle - mouseDelta.X
-	self.VerticalAngle = self.VerticalAngle - mouseDelta.Y
+	self.HorizontalAngle -= mouseDelta.X/currentCamera.ViewportSize.X
+	self.VerticalAngle -= mouseDelta.Y/currentCamera.ViewportSize.Y
 	self.VerticalAngle = math.rad(math.clamp(math.deg(self.VerticalAngle), self.VerticalAngleLimits.Min, self.VerticalAngleLimits.Max))
+	----
 	
 	local character = LOCAL_PLAYER.Character
 	local humanoidRootPart = (character ~= nil) and (character:FindFirstChild("HumanoidRootPart"))
 	if (humanoidRootPart ~= nil) then
 		
-		-- Lerp field of view --
-		currentCamera.FieldOfView = Lerp(currentCamera.FieldOfView, activeCameraSettings.FieldOfView, activeCameraSettings.LerpingSpeed)
+		--// Lerp field of view //--
+		currentCamera.FieldOfView = Lerp(
+			currentCamera.FieldOfView, 
+			activeCameraSettings.FieldOfView, 
+			activeCameraSettings.LerpSpeed
+		)
 		----
 		
-		-- Address shoulder direction --
+		--// Address shoulder direction //--
 		local offset = activeCameraSettings.Offset
 		offset = Vector3.new(offset.X * self.ShoulderDirection, offset.Y, offset.Z)
 		----
 		
-		-- Calculate new camera cframe --
+		--// Calculate new camera cframe //--
 		local newCameraCFrame = CFrame.new(humanoidRootPart.Position) *
 			CFrame.Angles(0, self.HorizontalAngle, 0) *
 			CFrame.Angles(self.VerticalAngle, 0, 0) *
 			CFrame.new(offset)
 		
-		newCameraCFrame = currentCamera.CFrame:Lerp(newCameraCFrame, activeCameraSettings.LerpingSpeed)
+		newCameraCFrame = currentCamera.CFrame:Lerp(newCameraCFrame, activeCameraSettings.LerpSpeed)
 		----
 		
-		-- Raycast for obstructions --
+		--// Raycast for obstructions //--
 		local raycastParams = RaycastParams.new()
 		raycastParams.FilterDescendantsInstances = {character}
 		raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 		local raycastResult = workspace:Raycast(
 			humanoidRootPart.Position,
-			(newCameraCFrame.p - humanoidRootPart.Position).Unit * offset.Magnitude,
+			newCameraCFrame.p - humanoidRootPart.Position,
 			raycastParams
 		)
 		----
 		
-		-- Address obstructions if any --
+		--// Address obstructions if any //--
 		if (raycastResult ~= nil) then
 			local obstructionDisplacement = (raycastResult.Position - humanoidRootPart.Position)
 			local obstructionPosition = humanoidRootPart.Position + (obstructionDisplacement.Unit * (obstructionDisplacement.Magnitude - 0.1))
@@ -248,11 +257,11 @@ function CLASS:Update()
 		end
 		----
 		
-		-- Address camera follow --
-		if (self.CameraFollow == true) then
+		--// Address character alignment //--
+		if (self.IsCharacterAligned == true) then
 			local newHumanoidRootPartCFrame = CFrame.new(humanoidRootPart.Position) *
 				CFrame.Angles(0, self.HorizontalAngle, 0)
-			humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(newHumanoidRootPartCFrame, activeCameraSettings.LerpingSpeed/2)
+			humanoidRootPart.CFrame = humanoidRootPart.CFrame:Lerp(newHumanoidRootPartCFrame, activeCameraSettings.LerpSpeed/2)
 		end
 		----
 		
@@ -263,20 +272,41 @@ function CLASS:Update()
 	end
 end
 
+function CLASS:ConfigureStateForEnabled()
+	self:SaveCameraSettings()
+	self.SavedMouseBehavior = USER_INPUT_SERVICE.MouseBehavior
+	self:SetActiveCameraSettings("DefaultShoulder")
+	self:SetCharacterAlignment(false)
+	self:SetMouseStep(true)
+	self:SetShoulderDirection(1)
+	self.HorizontalAngle = 0
+	self.VerticalAngle = 0
+end
+
+function CLASS:ConfigureStateForDisabled()
+	self:LoadCameraSettings()
+	USER_INPUT_SERVICE.MouseBehavior = self.SavedMouseBehavior
+	self:SetActiveCameraSettings("DefaultShoulder")
+	self:SetCharacterAlignment(false)
+	self:SetMouseStep(false)
+	self:SetShoulderDirection(1)
+	self.HorizontalAngle = 0
+	self.VerticalAngle = 0
+end
+
 function CLASS:Enable()
 	assert(self.IsEnabled == false, "OTS Camera System Logic Error: Attempt to enable without disabling")
 	
 	self.IsEnabled = true
 	self.EnabledEvent:Fire()
-	self:InitializeForEnable()
+	self:ConfigureStateForEnabled()
+	
 	RUN_SERVICE:BindToRenderStep(
 		UPDATE_UNIQUE_KEY,
 		Enum.RenderPriority.Camera.Value - 10,
 		function()
 			if (self.IsEnabled == true) then
 				self:Update()
-			else
-				RUN_SERVICE:UnbindFromRenderStep(UPDATE_UNIQUE_KEY)
 			end
 		end
 	)
@@ -285,10 +315,13 @@ end
 function CLASS:Disable()
 	assert(self.IsEnabled == true, "OTS Camera System Logic Error: Attempt to disable without enabling")
 	
-	self:InitializeForDisable()
+	self:ConfigureStateForDisabled()
 	self.IsEnabled = false
 	self.DisabledEvent:Fire()
+	
+	RUN_SERVICE:UnbindFromRenderStep(UPDATE_UNIQUE_KEY)
 end
+----
 
 --// INSTRUCTIONS //--
 
@@ -297,7 +330,7 @@ CLASS.__index = CLASS
 local singleton = CLASS.new()
 
 USER_INPUT_SERVICE.InputBegan:Connect(function(inputObject, gameProcessedEvent)
-	if (gameProcessedEvent == false) then
+	if (gameProcessedEvent == false) and (singleton.IsEnabled == true) then
 		if (inputObject.KeyCode == Enum.KeyCode.Q) then
 			singleton:SetShoulderDirection(-1)
 		elseif (inputObject.KeyCode == Enum.KeyCode.E) then
@@ -309,18 +342,14 @@ USER_INPUT_SERVICE.InputBegan:Connect(function(inputObject, gameProcessedEvent)
 		
 		if (inputObject.KeyCode == Enum.KeyCode.LeftControl) then
 			if (singleton.IsEnabled == true) then
-				if (singleton.IsSteppedOut == false) then
-					singleton:StepOut()
-				else
-					singleton:StepIn()
-				end
+				singleton:SetMouseStep(not singleton.IsMouseSteppedIn)
 			end
 		end
 	end
 end)
 
 USER_INPUT_SERVICE.InputEnded:Connect(function(inputObject, gameProcessedEvent)
-	if (gameProcessedEvent == false) then
+	if (gameProcessedEvent == false) and (singleton.IsEnabled == true) then
 		if (inputObject.UserInputType == Enum.UserInputType.MouseButton2) then
 			singleton:SetActiveCameraSettings("DefaultShoulder")
 		end
@@ -328,4 +357,4 @@ USER_INPUT_SERVICE.InputEnded:Connect(function(inputObject, gameProcessedEvent)
 end)
 
 
-return singleton``````````````
+return singleton
