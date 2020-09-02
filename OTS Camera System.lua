@@ -279,8 +279,16 @@ function CLASS:ConfigureStateForEnabled()
 	self:SetCharacterAlignment(false)
 	self:SetMouseStep(true)
 	self:SetShoulderDirection(1)
-	self.HorizontalAngle = 0
-	self.VerticalAngle = 0
+	
+	--// Calculate angles //--
+	local defaultCFrame = CFrame.new()
+	local cameraCFrame = workspace.CurrentCamera.CFrame
+	local horizontalAngle = -math.acos(defaultCFrame.RightVector:Dot(cameraCFrame.RightVector))
+	local verticalAngle = math.acos(defaultCFrame.UpVector:Dot(cameraCFrame.UpVector))
+	----
+	
+	self.HorizontalAngle = horizontalAngle
+	self.VerticalAngle = verticalAngle
 end
 
 function CLASS:ConfigureStateForDisabled()
