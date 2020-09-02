@@ -281,10 +281,10 @@ function CLASS:ConfigureStateForEnabled()
 	self:SetShoulderDirection(1)
 	
 	--// Calculate angles //--
-	local defaultCFrame = CFrame.new()
 	local cameraCFrame = workspace.CurrentCamera.CFrame
-	local horizontalAngle = -math.acos(defaultCFrame.RightVector:Dot(cameraCFrame.RightVector))
-	local verticalAngle = math.acos(defaultCFrame.UpVector:Dot(cameraCFrame.UpVector))
+	local x, y, z = cameraCFrame:ToOrientation()
+	local horizontalAngle = y
+	local verticalAngle = x
 	----
 	
 	self.HorizontalAngle = horizontalAngle
