@@ -137,6 +137,10 @@ function CLASS:SetCharacterAlignment(aligned)
 		return
 	end
 	
+	local character = LOCAL_PLAYER.Character
+	local humanoid = (character ~= nil) and (character:FindFirstChild("Humanoid"))
+
+	humanoid.AutoRotate = not aligned
 	self.IsCharacterAligned = aligned
 	self.CharacterAlignmentChangedEvent:Fire(aligned)
 end
